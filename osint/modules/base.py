@@ -5,6 +5,3 @@ class Recon:
 
     def run(self):
         raise NotImplementedError
-
-    def summarize(self):
-        print(self.results)

@@ -3,7 +3,6 @@ from shodan import Shodan
 from shodan.exception import APIError
 import os
 import requests
-import json
 import aiohttp
 import asyncio
 

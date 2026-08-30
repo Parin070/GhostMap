@@ -1,5 +1,4 @@
 from rich.console import Console
-from rich.text import Text
 from rich.panel import Panel
 from rich.markdown import Markdown
 from dotenv import load_dotenv
