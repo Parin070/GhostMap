@@ -1,5 +1,6 @@
 from .base import Recon
 from shodan import Shodan
+from shodan.exception import APIError
 import os
 import requests
 import json
@@ -12,19 +13,29 @@ class IPRecon(Recon):
         async with aiohttp.ClientSession() as session:
             abuse_task = self.fetch_abuseipdb(session)
             vt_task = self.fetch_virustotal(session)
-            abuse_response, vt_response = await asyncio.gather(abuse_task, vt_task)
+            inf_task = self.fetch_ipinfo(session)
+            abuse_response, vt_response, inf_response = await asyncio.gather(abuse_task, vt_task, inf_task)
 
         #Shodan
-        api = Shodan(os.getenv("SHODAN"))
-        shodan_response = api.host(self.target)
-        
+        try:
+            api = Shodan(os.getenv("SHODAN"))
+            shodan_response = api.host(self.target)
+        except APIError:
+            shodan_response = {}
         self.results = {
             "AbuseIPDB": abuse_response,
             "Shodan": shodan_response,
-            "VirusTotal": vt_response
+            "VirusTotal": vt_response,
+            "IPInfo": inf_response
         }
         self.calculate_risk()
+
+    async def fetch_ipinfo(self, session):
+        url_inf = f"https://ipinfo.io/{self.target}/json"
         
+        async with session.get(url_inf) as resp:
+            return await resp.json()
+
         
     async def fetch_abuseipdb(self, session):
         #AbuseIPDB
