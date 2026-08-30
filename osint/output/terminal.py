@@ -27,16 +27,34 @@ def display_ip_results(results):
     table_sh.add_column("Field", justify="center", style="cyan")
     table_sh.add_column("Value", justify="center", style="magenta")
 
-    table_sh.add_row("Organization", str(results["Shodan"]["org"]))
-    table_sh.add_row("ISP", str(results["Shodan"]["isp"]))
-    location = f"{results['Shodan']['city']}, {results['Shodan']['country_name']}"
+    table_sh.add_row("Organization", str(results["Shodan"].get("org", "N/A")))
+    table_sh.add_row("ISP", str(results["Shodan"].get("isp", "N/A")))
+    location = f"{results['Shodan'].get('city', 'N/A')}, {results['Shodan'].get('country_name', 'N/A')}"
     table_sh.add_row("Location", location)
-    table_sh.add_row("ASN", str(results["Shodan"]["asn"]))
-    table_sh.add_row("Ports", str(results["Shodan"]["ports"]))
-    table_sh.add_row("Hostnames", str(results["Shodan"]["hostnames"]))
+    table_sh.add_row("ASN", str(results["Shodan"].get("asn", "N/A")))
+    table_sh.add_row("Ports", str(results["Shodan"].get("ports", "N/A")))
+    table_sh.add_row("Hostnames", str(results["Shodan"].get("hostnames", "N/A")))
     table_sh.add_row("CVEs", str(results["Shodan"].get("vulns", "None Found")))
 
     console.print(table_sh)
+
+    print()
+
+    #ipinfo
+    table_inf = Table(title="IPInfo")
+    table_inf.add_column("Field", justify="center", style="cyan")
+    table_inf.add_column("Value", justify="center", style="magenta")
+
+    inf = results["IPInfo"]
+    table_inf.add_row("Hostname", str(inf.get("hostname", "N/A")))
+    table_inf.add_row("City", str(inf.get("city", "N/A")))
+    table_inf.add_row("Reigon", str(inf.get("reigon", "N/A")))
+    table_inf.add_row("Country", str(inf.get("country", "N/A")))
+    table_inf.add_row("Coordinates", str(inf.get("loc", "N/A")))
+    table_inf.add_row("Postal", str(inf.get("postal", "N/A")))
+    table_inf.add_row("Timezone", str(inf.get("timezone", "N/A")))
+
+    console.print(table_inf)
 
     print()
 
