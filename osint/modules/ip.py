@@ -2,7 +2,6 @@ from .base import Recon
 from shodan import Shodan
 from shodan.exception import APIError
 import os
-import requests
 import aiohttp
 import asyncio
 

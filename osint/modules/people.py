@@ -1,14 +1,6 @@
 from .base import Recon
 import subprocess
-import sys
-import  json
-import requests
-from bs4 import BeautifulSoup
 from ddgs import DDGS
-from sherlock_project.sherlock import sherlock
-from sherlock_project.sites import SitesInformation
-from sherlock_project.notify import QueryNotify
-
 
 class PeopleRecon(Recon):
     def run(self):
