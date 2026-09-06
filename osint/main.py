@@ -62,7 +62,7 @@ def main():
             if " " in target:
                 facts_input = input("Extra facts (comma-separated, optional): ").strip()
                 if facts_input:
-                    facts = [f.strip() for f in facts_input.strip(",") if f.strip()]
+                    facts = [f.strip() for f in facts_input.split(",") if f.strip()]
             print(f"Running recon on {target}")
             recon = PeopleRecon(target, facts)
             recon.run()
