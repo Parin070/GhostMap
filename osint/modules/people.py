@@ -13,10 +13,17 @@ class PeopleRecon(Recon):
     def run(self):
         if self.facts:
             self._run_deep_search(self.facts)
-        elif " " in self.target:
-            self._run_name_dork()
         else:
-            self._run_sherlock()
+            self._run_name_dork()
+
+    def _matches_name(self, email):
+        local = email.split("@")[0].lower()
+        name_parts = self.target.lower().split()
+        return any(part in local for part in name_parts if len(part) > 2)
+
+    def _is_id_style(self, email):
+        local = email.split("@")[0]
+        return bool(re.match(r"^[a-z]?\d{4}[a-z0-9]*$", local, re.I))
 
     def _run_sherlock(self):
         result = subprocess.run(["sherlock", self.target], capture_output=True, text=True)
@@ -81,26 +88,37 @@ class PeopleRecon(Recon):
                     results = ddgs.text(q, max_results=10)
                     for r in results:
                         url = r.get("href", "")
-                        if url:
+                        title = r.get("title", "")
+                        body = r.get("body", "")
+                        if url and self.target.lower() in (title + body).lower():
                             found_urls.append(url)
             except Exception as e:
                 print("DDGS ERROR: ", e)
             time.sleep(1)
 
         found_urls = list(set(found_urls))
-        print("URLS FOUND:", len(found_urls), found_urls)
+        #print("URLS FOUND:", len(found_urls), found_urls)
 
         emails_found = set()
         headers = {"User-Agent": "Mozilla/5.0"}
         for url in found_urls:
             try:
                 resp = requests.get(url, headers=headers, timeout=8)
-                if resp.status_code == 200:
-                    emails_found.update(EMAIL_RE.findall(resp.text))
+                if resp.status_code != 200:
+                    continue
+                text = resp.text
+                name_idx = text.lower().find(self.target.lower())
+                for match in EMAIL_RE.findall(text):
+                    if self._matches_name(match):
+                        emails_found.add(match)
+                    elif self._is_id_style(match):
+                        email_idx = text.find(match)
+                        if name_idx != -1 and abs(email_idx - name_idx) < 300:
+                            emails_found.add(match)
             except Exception:
                 continue
 
-        print("EMAILS FOUND:", emails_found)
+        #print("EMAILS FOUND:", emails_found)
 
         pivot_sources = {}
         for email in emails_found:
