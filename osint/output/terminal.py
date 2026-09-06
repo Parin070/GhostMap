@@ -245,4 +245,20 @@ def display_people_results(results):
         for profile in data["Profiles"]:
             table.add_row(profile)
 
+    elif "DeepSearch" in results:
+        data = results["DeepSearch"]
+        table.title = f"Deep Search — {data['Full Name']}"
+        table.add_row(f"[bold]Facts:[/bold] {', '.join(data['Facts'])}")
+        table.add_row("[bold]— Sources Found —[/bold]")
+        for url in data["SourcesFound"]:
+            table.add_row(url)
+        table.add_row("[bold]— Emails Found —[/bold]")
+        for email in data["EmailsFound"]:
+            table.add_row(email)
+        table.add_row("[bold]— Email Pivot Sources —[/bold]")
+        for email, urls in data["EmailPivotSources"].items():
+            table.add_row(f"[yellow]{email}[/yellow]")
+            for url in urls:
+                table.add_row(f"  {url}")
+
     console.print(table)
