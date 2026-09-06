@@ -58,14 +58,19 @@ def main():
             console.print(Markdown(summary["choices"][0]["message"]["content"]))
         elif choice == "4":
             target = input("Enter username or full name: ")
+            mode = input("Search as (1) username - Sherlock, (2) person name - dork: ")
             facts=[]
-            if " " in target:
+            if mode == "2":
                 facts_input = input("Extra facts (comma-separated, optional): ").strip()
                 if facts_input:
                     facts = [f.strip() for f in facts_input.split(",") if f.strip()]
-            print(f"Running recon on {target}")
-            recon = PeopleRecon(target, facts)
-            recon.run()
+                print(f"Running recon on {target}")
+                recon = PeopleRecon(target, facts)
+                recon.run()
+            else:
+                print(f"Running recon on {target}")
+                recon = PeopleRecon(target)
+                recon._run_sherlock()
             display_people_results(recon.results)
         elif choice == "0":
             print("Exiting...")
