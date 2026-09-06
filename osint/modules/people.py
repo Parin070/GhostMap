@@ -65,19 +65,27 @@ class PeopleRecon(Recon):
         EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
         terms = " ".join([f'"{f}"' for f in facts])
-        query = f'"{self.target}" {terms}'
-        print("QUERY:", query)
+        base_query = f'"{self.target}" {terms}'
 
+        platforms = [
+            "github.com", "linkedin.com", "facebook.com",
+            "instagram.com", "twitter.com", "reddit.com",
+            "tiktok.com", "pinterest.com", "youtube.com"
+        ]
+
+        queries = [base_query] + [f'{base_query} site:{p}' for p in platforms]
         found_urls = []
-        try:
-            with DDGS() as ddgs:
-                results = ddgs.text(query, max_results=40)
-                for r in results:
-                    url = r.get("href", "")
-                    if url:
-                        found_urls.append(url)
-        except Exception as e:
-            found_urls.append(f"Error: {str(e)}")
+        for q in queries:
+            try:
+                with DDGS() as ddgs:
+                    results = ddgs.text(q, max_results=10)
+                    for r in results:
+                        url = r.get("href", "")
+                        if url:
+                            found_urls.append(url)
+            except Exception as e:
+                print("DDGS ERROR: ", e)
+            time.sleep(1)
 
         found_urls = list(set(found_urls))
         print("URLS FOUND:", len(found_urls), found_urls)
@@ -113,7 +121,7 @@ class PeopleRecon(Recon):
             "DeepSearch": {
                 "Full Name": self.target,
                 "Facts": facts,
-                "Query": query,
+                "Query": base_query,
                 "SourcesFound": found_urls,
                 "EmailsFound": list(emails_found),
                 "EmailPivotSources": pivot_sources
