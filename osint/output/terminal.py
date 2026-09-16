@@ -96,6 +96,22 @@ def display_domain_results(results):
     table_wh.add_row("Name Servers", str(results["Whois"]["Name Servers"]))
     table_wh.add_row("Organisation", str(results["Whois"]["Org"]))
 
+    #Tech Stack
+    print()
+    table_ts = Table(title="Tech Stack")
+    table_ts.add_column("Field", justify="center", style="cyan")
+    table_ts.add_column("Value", justify="center", style="magenta")
+
+    ts = results.get("TechStack", {})
+    if "error" in ts:
+        table_ts.add_row("Status", f"[red]{ts['error']}[/red]")
+    else:
+        table_ts.add_row("Detected", "\n".join(ts.get("Detected", [])) or "None")
+        table_ts.add_row("Server", str(ts.get("Server", "Unknown")))
+        table_ts.add_row("Powered By", str(ts.get("PoweredBy", "Unknown")))
+
+    console.print(table_ts)
+
     console.print(table_wh)
     if "Company" in results:
         print()
