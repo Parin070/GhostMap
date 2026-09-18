@@ -71,6 +71,11 @@ def _match_signals(fp, headers_blob, html_blob, cookie_blob):
                 return True
     return False
 
+def headers_blob_get(headers_blob, key):
+    for line in headers_blob.splitlines():
+        if line.lower().startswith(key.lower() + ":"):
+            return line.split(":", 1)[1].strip()
+    return "Unknown"
 
 class DomainRecon(Recon):
 
@@ -85,9 +90,10 @@ class DomainRecon(Recon):
             crtsh_task   = self._crtsh_lookup()
             vt_task      = self._vt_lookup()
             tech_task    = self._techstack_lookup()
+            meta_task    = self._scrape_page_meta()
 
-            who, dns_res, subdomains, vt_response, techstack = await asyncio.gather(
-                whois_task, dns_task, crtsh_task, vt_task, tech_task
+            who, dns_res, subdomains, vt_response, techstack, page_meta = await asyncio.gather(
+                whois_task, dns_task, crtsh_task, vt_task, tech_task, meta_task
             )
 
             self.results = {
@@ -102,6 +108,7 @@ class DomainRecon(Recon):
                 "Subdomains": subdomains,
                 "VirusTotal": vt_response,
                 "TechStack": techstack,
+                "PageMeta": page_meta
             }
 
             self.calculate_risk()
@@ -124,7 +131,18 @@ class DomainRecon(Recon):
     # ---------------- Phase 1 tasks ----------------
 
     def _whois_lookup(self):
-        return whois.whois(self.target)
+        try:
+            return whois.whois(self.target)
+        except Exception as e:
+            class _Empty: pass
+            w = _Empty()
+            w.registrar = None
+            w.org = None
+            w.creation_date = None
+            w.expiration_date = None
+            w.name_servers = None
+            w.error = str(e)
+            return w
 
     async def _dns_lookup(self):
         resolver = dns.asyncresolver.Resolver()
@@ -159,24 +177,101 @@ class DomainRecon(Recon):
         except Exception as e:
             return {"error": str(e)}
 
+    async def _scrape_page_meta(self):
+        url = self.target if self.target.startswith("http") else f"https://{self.target}"
+        result = {"Title": "", "Description": "", "OG_Description": "", "H1": ""}
+        headers = {
+            "User-Agent": UA["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        try:
+            async with self.session.get(url, headers=headers, ssl=False, allow_redirects=True) as resp:
+                html = await resp.text(errors="ignore")
+                if len(html) < 500 or resp.status >= 400:
+                    html, _, _ = await self._fetch_wayback(url)
+        except Exception:
+            html, _, _ = await self._fetch_wayback(url)
+
+        if not html:
+            return result
+
+        soup = BeautifulSoup(html, "html.parser")
+        if soup.title:
+            result["Title"] = soup.title.get_text(strip=True)
+
+        meta_desc = soup.find("meta", attrs={"name": "description"})
+        if meta_desc and meta_desc.get("content"):
+            result["Description"] = meta_desc["content"].strip()
+
+        og_desc = soup.find("meta", attrs={"property": "og:description"})
+        if og_desc and og_desc.get("content"):
+            result["OG_Description"] = og_desc["content"].strip()
+
+        h1 = soup.find("h1")
+        if h1:
+            result["H1"] = h1.get_text(strip=True)
+
+        return result
+
     async def _techstack_lookup(self):
         url = self.target if self.target.startswith("http") else f"https://{self.target}"
-        result = {"Detected": [], "Server": "Unknown", "PoweredBy": "Unknown"}
+        result = {"Detected": [], "Server": "Unknown", "PoweredBy": "Unknown", "Source": "live"}
+
+        headers = {
+            "User-Agent": UA["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+        }
+
+        html, headers_blob, cookie_blob, status = await self._fetch_live(url, headers)
+
+        if status is None or status >= 400 or len(html) < 500:
+            # live fetch blocked or empty — fall back to wayback snapshot
+            html, headers_blob, cookie_blob = await self._fetch_wayback(url)
+            result["Source"] = "wayback" if html else "blocked"
+
+        if html:
+            for tech, fp in TECH_FINGERPRINTS.items():
+                if _match_signals(fp, headers_blob, html, cookie_blob):
+                    result["Detected"].append(tech)
+
+            gen_match = re.search(r'<meta[^>]+name=["\']generator["\'][^>]+content=["\']([^"\']+)', html, re.IGNORECASE)
+            if gen_match:
+                result["Generator"] = gen_match.group(1)
+
+        if result["Source"] == "live":
+            result["Server"] = headers_blob_get(headers_blob, "Server")
+            result["PoweredBy"] = headers_blob_get(headers_blob, "X-Powered-By")
+
+        return result
+
+
+    async def _fetch_live(self, url, headers):
         try:
-            async with self.session.get(url, headers=UA, ssl=False, allow_redirects=True) as resp:
+            async with self.session.get(url, headers=headers, ssl=False, allow_redirects=True) as resp:
                 html = await resp.text(errors="ignore")
                 headers_blob = "\n".join(f"{k}: {v}" for k, v in resp.headers.items())
                 cookie_blob = "\n".join(f"{c.key}={c.value}" for c in resp.cookies.values())
+                return html, headers_blob, cookie_blob, resp.status
+        except Exception:
+            return "", "", "", None
 
-                for tech, fp in TECH_FINGERPRINTS.items():
-                    if _match_signals(fp, headers_blob, html, cookie_blob):
-                        result["Detected"].append(tech)
 
-                result["Server"] = resp.headers.get("Server", "Unknown")
-                result["PoweredBy"] = resp.headers.get("X-Powered-By", "Unknown")
-        except Exception as e:
-            result["error"] = str(e)
-        return result
+    async def _fetch_wayback(self, url):
+        try:
+            api = f"http://archive.org/wayback/available?url={url}"
+            async with self.session.get(api, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                data = await resp.json()
+                snap = data.get("archived_snapshots", {}).get("closest", {}).get("url")
+            if not snap:
+                return "", "", ""
+            async with self.session.get(snap, headers=UA, timeout=aiohttp.ClientTimeout(total=10)) as resp2:
+                html = await resp2.text(errors="ignore")
+                return html, "", ""
+        except Exception:
+            return "", "", ""
 
     # ---------------- risk + org resolution ----------------
 
