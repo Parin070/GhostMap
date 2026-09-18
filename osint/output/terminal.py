@@ -233,6 +233,35 @@ def display_email_results(results):
         table_hr.add_row("OS", latest.get("operating_system", "N/A"))
     
     console.print(table_hr)
+    
+    print()
+
+    # Harvested Emails
+    table_he = Table(title="Harvested Emails")
+    table_he.add_column("Field", justify="center", style="cyan")
+    table_he.add_column("Value", justify="center", style="magenta")
+
+    harvested = results.get("HarvestedEmails", [])
+    table_he.add_row("Total Found", str(len(harvested)))
+    if harvested:
+        sample = ", ".join(harvested[:5])
+        table_he.add_row("Sample", sample)
+
+    console.print(table_he)
+
+    print()
+
+    # Pattern Guess
+    table_pg = Table(title="Email Pattern")
+    table_pg.add_column("Field", justify="center", style="cyan")
+    table_pg.add_column("Value", justify="center", style="magenta")
+
+    pg = results.get("PatternGuess", {})
+    table_pg.add_row("Detected Pattern", pg.get("pattern", "unknown"))
+    table_pg.add_row("Confidence", f"{pg.get('confidence', 0)}%")
+    table_pg.add_row("Sample Size", str(pg.get("sample_size", 0)))
+
+    console.print(table_pg)
 
     print()
 
@@ -244,6 +273,7 @@ def display_email_results(results):
     table_rs.add_row("Risk Score", str(results["risk_score"]))
 
     console.print(table_rs)
+    print()
 
 def display_people_results(results):
     table = Table(title="Profiles")
