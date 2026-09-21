@@ -26,6 +26,8 @@
 
 GhostMap is a terminal-based OSINT tool built for cybersecurity analysts, bug bounty hunters, and researchers. Feed it a target — IP, domain, email, or name — and it pulls intelligence from multiple sources, scores the risk, and gives you an AI-generated threat assessment. All from one CLI.
 
+(Under progress...)
+
 ---
 
 ## Modules
