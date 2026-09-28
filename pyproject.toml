@@ -24,7 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 face = [
-    "insightface>=0.7.3; python_version < '3.13'",
+    "insightface>=0.7.3",
     "onnxruntime>=1.17",
     "opencv-python-headless",
     "numpy",
