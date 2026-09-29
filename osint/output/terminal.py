@@ -308,3 +308,18 @@ def display_people_results(results):
                 table.add_row(f"  {url}")
 
     console.print(table)
+
+def display_face_results(results):
+    if "error" in results:
+        console.print(f"[red]{results['error']}[/red]")
+        return
+    table = Table(title="Face matches")
+    table.add_column("URL", overflow="fold")
+    table.add_column("Score")
+    table.add_column("Band")
+    colors = {"high": "green", "medium": "yellow", "low": "red"}
+    for m in results["matches"]:
+        color = colors.get(m["band"], "dim")
+        score = "-" if m["score"] is None else str(m["score"])
+        table.add_row(m["url"], score, f"[{color}]{m['band']}[/{color}]")
+    console.print(table)
