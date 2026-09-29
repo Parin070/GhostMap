@@ -28,6 +28,7 @@ face = [
     "onnxruntime>=1.17",
     "opencv-python",
     "numpy",
+    "playwright>=1.40",
 ]
 
 [project.scripts]
