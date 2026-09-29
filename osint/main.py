@@ -7,10 +7,12 @@ from .modules.ip import IPRecon
 from .modules.domain import DomainRecon
 from .modules.email import EmailRecon
 from .modules.people import PeopleRecon
+from .modules.face import FaceRecon, pick_image, capture_camera, search_links
 from .output.terminal import display_ip_results
 from .output.terminal import display_domain_results
 from .output.terminal import display_email_results
 from .output.terminal import display_people_results
+from .output.terminal import display_face_results
 from .ai import summarize
 
 console = Console()
@@ -29,7 +31,7 @@ def main():
     console.print(Panel.fit(ASCII_ART, style = "bold cyan", title="[magenta]GhostMap v0.1[/magenta]", subtitle="[magenta]OSINT Recon Tool[/magenta]"))
     while True:
         console.print("\nWhat do you want to recon?", style="bold magenta")
-        console.print("1. IP\n2. Domain\n3. Email\n4. People\n0. Exit\n", style="bold magenta")
+        console.print("1. IP\n2. Domain\n3. Email\n4. People\n5. Facial Recon\n0. Exit\n", style="bold magenta")
 
         choice = (input("Enter your choice: "))
         if choice == "1":
@@ -74,6 +76,32 @@ def main():
             display_people_results(recon.results)
             summary = summarize(recon.results, recon_type="People")
             console.print(Markdown(summary["choices"][0]["message"]["content"]))
+        elif choice == "5":
+            src = input("Image source (1) file picker (2) camera (3) type path: ").strip()
+            if src == "1":
+                path = pick_image()
+            elif src == "2":
+                path = capture_camera()
+            else:
+                path = input("Image path: ").strip().strip('"')
+
+            if not path:
+                print("No image selected")
+            else:
+                pub = input("Public URL of image for reverse search (optional): ").strip()
+                if pub:
+                    for name, link in search_links(pub).items():
+                        print(f"{name}: {link}")
+
+                cand_input = input("Candidate URLs to verify (comma-separated, optional): ").strip()
+                candidates = [c.strip() for c in cand_input.split(",") if c.strip()]
+
+                print("Running face recon")
+                recon = FaceRecon(path, candidates)
+                recon.run()
+                display_face_results(recon.results)
+                if recon.results.get("matches"):
+                    summary = summarize(recon.results, recon_type="Face")
         elif choice == "0":
             print("Exiting...")
             break
