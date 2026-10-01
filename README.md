@@ -175,7 +175,6 @@ Sherlock        OpenRouter AI        python-whois / dnspython
 - [x] AI threat summary
 - [x] Rich terminal output
 - [ ] Facial recognition module (Phase 10)
-- [ ] Full async across all modules
 
 ---
 
